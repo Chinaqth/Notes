@@ -224,7 +224,11 @@ Intent除了开启界面之外，还可以传递指定的数据，利用**intent
 
 ```public void startActivityForResult(android.content.Intent intent,int requestCode)```
 
+```protected void onActivityResult(int requestCode,int resultCode,Intent data)```
 
+```public final void setResult(int resultCode,android.content.Intent data)```
+
+利用setResult方法发送数据，在准备接收数据的Activity当中重写onActivityResult就可以接收数据啦,利用requestCode和resultCode来保证数据传递无误。
 
 ### （续）Activity
 
@@ -402,6 +406,26 @@ D/A: onResume
 ~~~
 
 Activity竟然被销毁了，在销毁之前调用了onSaveInstanceState方法保存当前的数据，在交互状态前使用了onRestoreInstanceState来恢复数据。
+
+### Activity的启动模式
+
+Activity的启动模式一共有4种，分别是standard、singleTop、singleTask、singlinstance。在AndroidManifest文件中通过给<activity>标签指定android:launchMode来选择你需要的启动方式。
+
+- standard
+
+  Activity的默认启动模式，在这种模式下每当你启动一个Activity都会在返回栈中添加这个Activity，你可以试一试让一个Activity自己通过startActivity启动自己，并在onCreate方法中Log this.toString，你会发现同样的Activity会被反复创建，创建了多少次你就要点击多少次退出键。
+
+- singleTop
+
+  singleTop就处理这种情况，当前Activity为栈顶时就不会在重复添加，但是，如果通过其他的Activity在startActivity，这样的话返回栈中又会有两个相同的Activity。
+
+- singleTask
+
+  singleTask保证了一个返回栈中只存在一个某个Activity的实例，如果你以A Activity开始，开启了B Activity，在用B Activity开启 A Activity，那么这个A还是你开始的那个Activity，这个例子中singleTask通过直接从返回栈中将B移除的方式，使得A重新回到栈顶。
+
+- singleInstance
+
+  这个模式非常特殊，使用了这个模式的Activity在启动时会单独创建一个返回栈来管理这个Activity，实现了多个Activity共享一个Activity，但是使用的时候也需要注意，这里也用一个例子来说明，A启动了singleInstance的B，B启动了C，那么由于B是被另一个返回栈所控制的，所以当你在**C中按下返回键会直接到A**，在按下返回键则会退出。
 
 
 
