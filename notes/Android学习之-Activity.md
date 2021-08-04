@@ -230,6 +230,21 @@ Intent除了开启界面之外，还可以传递指定的数据，利用**intent
 
 利用setResult方法发送数据，在准备接收数据的Activity当中重写onActivityResult就可以接收数据啦,利用requestCode和resultCode来保证数据传递无误。
 
+> Bundle
+
+其实，应该在Intent之前就讲述Bundle的概念的，Bundle和Intent一样，都是Activity之间交换数据的一种工具，而且用法极其相似。
+
+~~~java
+Bundle bundle = new Bundle();
+bundle.putExtra(Key key,Value value);
+....
+Intent intent = new Intent(Context context,Class <?> cls);
+intent.putExtras(bundle);
+startActivity(intent);
+~~~
+
+你会发现这个Bundle的用法和Intent几乎是一模一样的，同样是以键值对的方式传递数据，只是用Bundle时要把数据先给Bundle，再把bundle实例传到intent对象的PutExtras中。
+
 ### （续）Activity
 
 我们刚刚初步学习了Intent的使用方法，就是为了更好的体验Activity的生命周期，我们在第一个Activity中使用Intent去启动另一个Activity，来观察A和B Activity来回切换时生存期的变化。
@@ -427,5 +442,28 @@ Activity的启动模式一共有4种，分别是standard、singleTop、singleTas
 
   这个模式非常特殊，使用了这个模式的Activity在启动时会单独创建一个返回栈来管理这个Activity，实现了多个Activity共享一个Activity，但是使用的时候也需要注意，这里也用一个例子来说明，A启动了singleInstance的B，B启动了C，那么由于B是被另一个返回栈所控制的，所以当你在**C中按下返回键会直接到A**，在按下返回键则会退出。
 
+## 问题
 
+- Bundle和Intent有什么区别，这两个同样用的是键值对的形式，那为什么不用HashMap实现？
 
+  1. Bundle和Intent的作用都是一样的，负责在Activity之间传递数据，用法几乎相同，打开Intent的源码：
+
+     ~~~java
+     public @NonNull Intent putExtra(String name, char value) {
+             if (mExtras == null) {
+                 mExtras = new Bundle();
+             }
+             mExtras.putChar(name, value);
+             return this;
+         }
+     ~~~
+
+     其中的一个putExtra,可以看到，其实在intent传入键值对的方法中创建了Bundle对象来传输数据。
+
+  2. 首先，Activity中使用Intent或者Bundle传递的都是体积较小的数据，而HashMap底层的数据结构是利用数组、链表，而Bundle是利用ArrayMAP实现的，在少量数据面前HashMap显得过于庞大，消耗太多资源，小巧的Bundle则更加适合这种体型数据的传输；其次，在某些时刻Intent可以传输对象，这就要求对象能被序列化，Intent使用的时Parcelable，而HashMap则使用Serializable，在Android中，使用前者的性能要优于后者，所以更加推荐Intent。
+
+- 在Activity中如果有DiaLog弹出，那么当前的Activity生命周期会调用那个函数？
+
+  什么也不会发生。
+
+  
