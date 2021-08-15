@@ -1,6 +1,10 @@
-# ContentProvider
+# Android学习之-ContentProvider
 
-## SQLite:
+在Android四大组件之中，ContentProvider是负责进程和进程，进程内部的数据传输的，一个ContentProvider可以看作是一个中介，不同的进程来来去去，在一个中介中获取或者更新数据，所以ContentProvider中存在数据库，SQLite的学习就显得很有必要了。
+
+## 准备
+
+一个SQLite数据库，创建一张或多张表
 
 ```java
 public class MySQL extends SQLiteOpenHelper {
@@ -22,116 +26,29 @@ public class MySQL extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 
     }
-```
-
-## contentprovider：
-
-~~~java
-public class MyContentProvider extends ContentProvider {
-    MySQL mySQL = null;
-    SQLiteDatabase db = null;
-    private static final int BOOKDIR = 1;
-    private static final String authority = "com.example.mycontentprovider.provier";
-    private static final UriMatcher uriMatcher;
-    static {
-        uriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
-        uriMatcher.addURI(authority,"book",BOOKDIR);
-    }
-
-    public MyContentProvider() {
-    }
-
-    @Override
-    public int delete(Uri uri, String selection, String[] selectionArgs) {
-        // Implement this to handle requests to delete one or more rows.
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    @Override
-    public String getType(Uri uri) {
-        // TODO: Implement this to handle requests for the MIME type of the data
-        // at the given URI.
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    @Override
-    public Uri insert(Uri uri, ContentValues values) {
-        switch (uriMatcher.match(uri)){
-            case BOOKDIR:
-                long insert = db.insert("book", null, values);
-                return Uri.parse("content://" + authority + "/book/" + insert);
-        }
-        return null;
-    }
-
-    @Override
-    public boolean onCreate() {
-        mySQL = new MySQL(getContext(),"Book.db",null,1);
-        db = mySQL.getWritableDatabase();
-        Toast.makeText(getContext(),"DB Created!",Toast.LENGTH_SHORT).show();
-        return true;
-    }
-
-    @Override
-    public Cursor query(Uri uri, String[] projection, String selection,
-                        String[] selectionArgs, String sortOrder) {
-        switch (uriMatcher.match(uri)){
-            case BOOKDIR:
-                return db.query("book",null,selection,selectionArgs,null,null,sortOrder);
-        }
-        return null;
-    }
-
-    @Override
-    public int update(Uri uri, ContentValues values, String selection,
-                      String[] selectionArgs) {
-        // TODO: Implement this to handle requests to update one or more rows.
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-}
-~~~
-
-## Activity
-
-```java
-public class MainActivity extends AppCompatActivity {
-    Button btnInsert;
-    Button btnQuery;
-    MyContentProvider contentProvider;
-
-    Uri uri;
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        ContentResolver resolver = getContentResolver();
-        btnInsert = findViewById(R.id.insert);
-        btnQuery = findViewById(R.id.query);
-        btnInsert.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                uri = Uri.parse("content://com.example.mycontentprovider.provier/book");
-                ContentValues values = new ContentValues();
-                values.put("name","Love");
-                values.put("author","Alex");
-                resolver.insert(uri,values);
-            }
-        });
-
-        btnQuery.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                uri = Uri.parse("content://com.example.mycontentprovider.provier/book");
-                Cursor cursor = resolver.query(uri,null,null,null,null);
-                while (cursor.moveToNext()){
-                    String name = cursor.getString(cursor.getColumnIndex("name"));
-                    String author = cursor.getString(cursor.getColumnIndex("author"));
-                    Log.d("Name:",name);
-                    Log.d("Author",author);
-                }
-            }
-        });
-    }
 }
 ```
+
+## 自定义一个ContentProvider
+
+在ContentProvider中经常利用到的一个类为Uri，Uri被称为**“统一资源定位符”**，依靠这个定位符才能获取到指定的数据，Uri有自己的语法规则
+
+“**content://Authority/table/1**”
+
+- content：//是固定的语法。
+- 你的ContentProvider靠Authority来和其他的ContentProvider区分，一般的规则为包名.provider。
+- table就是具体的表名。
+- 1为table中的第一条。
+
+**content://Authority/table/#**表示表中的任意一行数据
+
+**content://Authority/***表示任意一张表
+
+我们用UriMatcher类的match来匹配我们传入的Uri，匹配成功后返回一个int类型的数据，我们可以在ContentProvider中先设定好我们预期的整数值来对应不同的Uri。
+
+
+
+
+
+
 
