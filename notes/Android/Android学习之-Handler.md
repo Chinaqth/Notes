@@ -285,6 +285,26 @@ public static void loop() {
 ```
 在loop方法中我们看到，Looper在不断的从消息队列中使用next（）方法取出消息，再通过dispatchMessage（）方法把消息发到Handler中，Handler收到消息在handleMessage中做出处理。
 
+```java
+public void dispatchMessage(@NonNull Message msg) {
+    if (msg.callback != null) {
+        //当Message存在回调方法，回调方法msg.callback.run()
+        handleCallback(msg);
+    } else {
+        if (mCallback != null) {
+            //当Handler存在Callback成员变量时，回调方法mCallback.handleMessage()；
+            if (mCallback.handleMessage(msg)) {
+                return;
+            }
+        }
+        //Handler子类通过覆写该方法来完成具体的逻辑
+        handleMessage(msg);
+    }
+}
+```
+
+
+
 ### MessageQueue
 
 其实看到这里，Handler的运行机制已经基本上有一个大概的感觉了，但是我们还要看看消息的机制。
@@ -399,4 +419,138 @@ boolean enqueueMessage(Message msg, long when) {
 ```
 
 消息会通过时间的先后顺序将消息插入到MessageQueue的链表当中。
+
+### 发送消息
+
+我们看了怎么取出消息和消息队列的机制，现在我们来看看发送消息的流程吧。
+
+```java
+public final boolean sendMessage(@NonNull Message msg) {
+    return sendMessageDelayed(msg, 0);
+}
+
+/**
+ * Sends a Message containing only the what value.
+ *  
+ * @return Returns true if the message was successfully placed in to the 
+ *         message queue.  Returns false on failure, usually because the
+ *         looper processing the message queue is exiting.
+ */
+public final boolean sendEmptyMessage(int what)
+{
+    return sendEmptyMessageDelayed(what, 0);
+}
+
+/**
+ * Sends a Message containing only the what value, to be delivered
+ * after the specified amount of time elapses.
+ * @see #sendMessageDelayed(android.os.Message, long) 
+ * 
+ * @return Returns true if the message was successfully placed in to the 
+ *         message queue.  Returns false on failure, usually because the
+ *         looper processing the message queue is exiting.
+ */
+public final boolean sendEmptyMessageDelayed(int what, long delayMillis) {
+    Message msg = Message.obtain();
+    msg.what = what;
+    return sendMessageDelayed(msg, delayMillis);
+}
+
+/**
+ * Sends a Message containing only the what value, to be delivered 
+ * at a specific time.
+ * @see #sendMessageAtTime(android.os.Message, long)
+ *  
+ * @return Returns true if the message was successfully placed in to the 
+ *         message queue.  Returns false on failure, usually because the
+ *         looper processing the message queue is exiting.
+ */
+
+public final boolean sendEmptyMessageAtTime(int what, long uptimeMillis) {
+    Message msg = Message.obtain();
+    msg.what = what;
+    return sendMessageAtTime(msg, uptimeMillis);
+}
+
+/**
+ * Enqueue a message into the message queue after all pending messages
+ * before (current time + delayMillis). You will receive it in
+ * {@link #handleMessage}, in the thread attached to this handler.
+ *  
+ * @return Returns true if the message was successfully placed in to the 
+ *         message queue.  Returns false on failure, usually because the
+ *         looper processing the message queue is exiting.  Note that a
+ *         result of true does not mean the message will be processed -- if
+ *         the looper is quit before the delivery time of the message
+ *         occurs then the message will be dropped.
+ */
+public final boolean sendMessageDelayed(@NonNull Message msg, long delayMillis) {
+    if (delayMillis < 0) {
+        delayMillis = 0;
+    }
+    return sendMessageAtTime(msg, SystemClock.uptimeMillis() + delayMillis);
+}
+
+/**
+ * Enqueue a message into the message queue after all pending messages
+ * before the absolute time (in milliseconds) <var>uptimeMillis</var>.
+ * <b>The time-base is {@link android.os.SystemClock#uptimeMillis}.</b>
+ * Time spent in deep sleep will add an additional delay to execution.
+ * You will receive it in {@link #handleMessage}, in the thread attached
+ * to this handler.
+ * 
+ * @param uptimeMillis The absolute time at which the message should be
+ *         delivered, using the
+ *         {@link android.os.SystemClock#uptimeMillis} time-base.
+ *         
+ * @return Returns true if the message was successfully placed in to the 
+ *         message queue.  Returns false on failure, usually because the
+ *         looper processing the message queue is exiting.  Note that a
+ *         result of true does not mean the message will be processed -- if
+ *         the looper is quit before the delivery time of the message
+ *         occurs then the message will be dropped.
+ */
+public boolean sendMessageAtTime(@NonNull Message msg, long uptimeMillis) {
+    MessageQueue queue = mQueue;
+    if (queue == null) {
+        RuntimeException e = new RuntimeException(
+                this + " sendMessageAtTime() called with no mQueue");
+        Log.w("Looper", e.getMessage(), e);
+        return false;
+    }
+    return enqueueMessage(queue, msg, uptimeMillis);
+}
+```
+
+当handler持有一个消息时，可以利用sendXxxMessage系列的方法发送消息，我么可以看一下，这些消息最后都调用了sendMessageAtTime这个方法。
+
+```java
+public boolean sendMessageAtTime(@NonNull Message msg, long uptimeMillis) {
+    MessageQueue queue = mQueue;
+    if (queue == null) {
+        RuntimeException e = new RuntimeException(
+                this + " sendMessageAtTime() called with no mQueue");
+        Log.w("Looper", e.getMessage(), e);
+        return false;
+    }
+    return enqueueMessage(queue, msg, uptimeMillis);
+}
+```
+
+可以看到里面拿到了消息队列，并且对其做出判断，如果为null则抛出异常，如果存在直接将消息放入enqueueMessage并返回。看看这里使用的enqueueMessage。
+
+```java
+private boolean enqueueMessage(@NonNull MessageQueue queue, @NonNull Message msg,
+        long uptimeMillis) {
+    msg.target = this;
+    msg.workSourceUid = ThreadLocalWorkSource.getUid();
+
+    if (mAsynchronous) {
+        msg.setAsynchronous(true);
+    }
+    return queue.enqueueMessage(msg, uptimeMillis);
+}
+```
+
+这里的enqueueMessage最终调用消息队列的enqueueMessage。
 
