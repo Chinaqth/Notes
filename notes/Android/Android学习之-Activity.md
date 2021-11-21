@@ -466,4 +466,53 @@ Activity的启动模式一共有4种，分别是standard、singleTop、singleTas
 
   什么也不会发生。
 
-  
+- 在不同启动模式下Activity的生命周期是怎么样的？
+
+  1. Standard：
+
+     A Activity以标准模式启动A本身：
+
+     ~~~java
+      D/QQQ: onPause: 
+      D/QQQ: onCreate: 
+      D/QQQ: onStart: 
+      D/QQQ: onResume: 
+      D/QQQ: onStop: 
+     ~~~
+
+  2. SingleTop：
+
+     A Activity以SingleTop的启动模式下启动 A 本身：
+
+     ~~~java
+      D/QQQ: onPause: 
+      D/QQQ: onResume: 
+     ~~~
+
+     A Activity启动B ，再以B启动A：
+
+     ~~~java
+      D/QQQ: onCreate: 
+      D/QQQ: onStart: 
+      D/QQQ: onResume: 
+     ~~~
+
+     **发现当一个A 以SingleTop的方式启动的，在返回栈中只存在A的时候在启动A的时候，不会再次创建A的实例，但是当A不再是栈顶Activity时（如B），再次被其他的Activity启动，还是会重新走一遍onCreate以及之后的流程。**
+
+  3. SingleTask
+
+     **SingleTask最大的特点就是可以保证只有一个Activity不会被重新创建，而代价是在他之上的Activity全会被销毁，我们这里添加一个Activity C 让他启动 LaunchMode为SingleTop 的A，看看 这期间 B 和 C的生命周期。**
+
+     ~~~java
+     D/C: onPause: 
+     D/B: onDestroy: 
+     D/A: onRestart: 
+     D/A: onStart: 
+     D/A: onResume: 
+     D/C: onStop: 
+     D/C: onDestroy: 
+     ~~~
+
+  4. SingleInstance：
+
+     这个模式的特点是 加入启动的Activity为 A -> B -> C 而B的启动模式为SingleInstance，由于Single Instance默认会提供另一个返回栈管理该Activity（就是B），所以当按下返回键C 是会直接返回到A。
